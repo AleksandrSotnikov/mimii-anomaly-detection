@@ -1,0 +1,64 @@
+openapi: 3.0.0
+info:
+  title: MIMII Anomaly Detection REST API
+  version: 1.0.0
+description: |
+  Описание REST API сервисов для инференса, batch-проверки, мониторинга и администрирования моделей.
+servers:
+  - url: http://localhost:8080
+paths:
+  /predict/:
+    post:
+      summary: Аномалия инспекция
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  anomaly_score:
+                    type: number
+  /predict_batch/:
+    post:
+      summary: Batch инференс (несколько файлов)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        anomaly_score:
+                          type: number

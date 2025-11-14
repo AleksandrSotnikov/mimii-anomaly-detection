@@ -1,0 +1,19 @@
+# Prometheus AlertManager rules (yaml)
+group: mimii_anomaly_alerts
+rules:
+  - alert: HighAnomalyRate
+    expr: increase(mimii_anomalies_total[5m]) > 5
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High rate of anomalies detected (>5/5min)"
+      description: "Mimii detected >5 anomalies in the last 5 minutes."
+  - alert: SlowInference
+    expr: avg(mimii_model_inference_latency_seconds[5m]) > 1
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Model inference is too slow (>1s avg)"
+      description: "Check server/deployment or retrain model."
