@@ -1,147 +1,175 @@
-"""Audio feature extraction for MIMII dataset."""
+"""Feature extraction from audio signals."""
 
 import numpy as np
 import librosa
-import torch
+from typing import Dict, Optional
 import logging
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
 
-class AudioFeatureExtractor:
-    """Extract audio features from waveforms."""
+class FeatureExtractor:
+    """Extract audio features for anomaly detection.
     
-    def __init__(
-        self,
-        sample_rate: int = 16000,
-        n_fft: int = 1024,
-        hop_length: int = 512,
-        n_mels: int = 128,
-        n_mfcc: int = 40
-    ):
-        """
+    Supports MFCC, Mel-spectrogram, and other acoustic features.
+    """
+    
+    def __init__(self, sr: int = 16000, n_mfcc: int = 13, 
+                 n_fft: int = 2048, hop_length: int = 512,
+                 n_mels: int = 128):
+        """Initialize feature extractor.
+        
         Args:
-            sample_rate: Audio sample rate
+            sr: Sampling rate
+            n_mfcc: Number of MFCC coefficients
             n_fft: FFT window size
             hop_length: Hop length for STFT
-            n_mels: Number of mel bands
-            n_mfcc: Number of MFCC coefficients
+            n_mels: Number of Mel bins
         """
-        self.sample_rate = sample_rate
+        self.sr = sr
+        self.n_mfcc = n_mfcc
         self.n_fft = n_fft
         self.hop_length = hop_length
         self.n_mels = n_mels
-        self.n_mfcc = n_mfcc
     
-    def extract_mel_spectrogram(self, audio: np.ndarray) -> np.ndarray:
-        """Extract mel spectrogram.
-        
-        Args:
-            audio: Audio waveform (numpy array)
-        
-        Returns:
-            Mel spectrogram (n_mels x time_frames)
-        """
-        mel_spec = librosa.feature.melspectrogram(
-            y=audio,
-            sr=self.sample_rate,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            n_mels=self.n_mels
-        )
-        
-        # Convert to log scale (dB)
-        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
-        
-        return mel_spec_db
-    
-    def extract_mfcc(self, audio: np.ndarray) -> np.ndarray:
+    def extract_mfcc(self, audio: np.ndarray) -> Optional[np.ndarray]:
         """Extract MFCC features.
         
         Args:
-            audio: Audio waveform (numpy array)
-        
+            audio: Audio signal (1D array)
+            
         Returns:
-            MFCC features (n_mfcc x time_frames)
+            MFCC features (n_mfcc x time_steps)
         """
-        mfcc = librosa.feature.mfcc(
-            y=audio,
-            sr=self.sample_rate,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            n_mfcc=self.n_mfcc
-        )
-        
-        return mfcc
+        try:
+            mfcc = librosa.feature.mfcc(
+                y=audio,
+                sr=self.sr,
+                n_mfcc=self.n_mfcc,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length
+            )
+            # Normalize
+            mfcc = (mfcc - np.mean(mfcc)) / (np.std(mfcc) + 1e-8)
+            return mfcc
+        except Exception as e:
+            logger.error(f"Error extracting MFCC: {e}")
+            return None
     
-    def extract_features(self, audio: np.ndarray, feature_type: str = "mel") -> np.ndarray:
-        """Extract features from audio.
+    def extract_mel_spectrogram(self, audio: np.ndarray) -> Optional[np.ndarray]:
+        """Extract Mel-spectrogram.
         
         Args:
-            audio: Audio waveform
-            feature_type: Type of features ('mel' or 'mfcc')
-        
+            audio: Audio signal (1D array)
+            
         Returns:
-            Extracted features
+            Mel-spectrogram (n_mels x time_steps)
         """
-        if feature_type == "mel":
-            return self.extract_mel_spectrogram(audio)
-        elif feature_type == "mfcc":
-            return self.extract_mfcc(audio)
-        else:
-            raise ValueError(f"Unknown feature type: {feature_type}")
+        try:
+            mel_spec = librosa.feature.melspectrogram(
+                y=audio,
+                sr=self.sr,
+                n_mels=self.n_mels,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length
+            )
+            # Convert to log scale (dB)
+            mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+            # Normalize
+            mel_spec_db = (mel_spec_db - np.mean(mel_spec_db)) / (np.std(mel_spec_db) + 1e-8)
+            return mel_spec_db
+        except Exception as e:
+            logger.error(f"Error extracting Mel-spectrogram: {e}")
+            return None
     
-    def normalize_features(self, features: np.ndarray) -> np.ndarray:
-        """Normalize features to zero mean and unit variance.
+    def extract_zcr(self, audio: np.ndarray) -> Optional[np.ndarray]:
+        """Extract Zero Crossing Rate.
         
         Args:
-            features: Feature matrix
-        
+            audio: Audio signal (1D array)
+            
         Returns:
-            Normalized features
+            ZCR values (1 x time_steps)
         """
-        mean = np.mean(features, axis=1, keepdims=True)
-        std = np.std(features, axis=1, keepdims=True)
+        try:
+            zcr = librosa.feature.zero_crossing_rate(
+                audio,
+                hop_length=self.hop_length
+            )
+            return zcr
+        except Exception as e:
+            logger.error(f"Error extracting ZCR: {e}")
+            return None
+    
+    def extract_spectral_centroid(self, audio: np.ndarray) -> Optional[np.ndarray]:
+        """Extract Spectral Centroid.
         
-        # Avoid division by zero
-        std = np.where(std == 0, 1, std)
+        Args:
+            audio: Audio signal (1D array)
+            
+        Returns:
+            Spectral centroid values (1 x time_steps)
+        """
+        try:
+            spec_cent = librosa.feature.spectral_centroid(
+                y=audio,
+                sr=self.sr,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length
+            )
+            return spec_cent
+        except Exception as e:
+            logger.error(f"Error extracting spectral centroid: {e}")
+            return None
+    
+    def extract_spectral_rolloff(self, audio: np.ndarray) -> Optional[np.ndarray]:
+        """Extract Spectral Rolloff.
         
-        normalized = (features - mean) / std
+        Args:
+            audio: Audio signal (1D array)
+            
+        Returns:
+            Spectral rolloff values (1 x time_steps)
+        """
+        try:
+            rolloff = librosa.feature.spectral_rolloff(
+                y=audio,
+                sr=self.sr,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length
+            )
+            return rolloff
+        except Exception as e:
+            logger.error(f"Error extracting spectral rolloff: {e}")
+            return None
+    
+    def extract_all_features(self, audio: np.ndarray) -> Dict[str, np.ndarray]:
+        """Extract all available features.
         
-        return normalized
-
-
-def collate_fn_with_features(
-    batch,
-    feature_extractor: AudioFeatureExtractor,
-    feature_type: str = "mel"
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Custom collate function to extract features on-the-fly.
+        Args:
+            audio: Audio signal (1D array)
+            
+        Returns:
+            Dictionary with all extracted features
+        """
+        features = {
+            'mfcc': self.extract_mfcc(audio),
+            'mel_spectrogram': self.extract_mel_spectrogram(audio),
+            'zcr': self.extract_zcr(audio),
+            'spectral_centroid': self.extract_spectral_centroid(audio),
+            'spectral_rolloff': self.extract_spectral_rolloff(audio)
+        }
+        # Remove None values
+        features = {k: v for k, v in features.items() if v is not None}
+        return features
     
-    Args:
-        batch: List of (audio, label) tuples
-        feature_extractor: Feature extractor instance
-        feature_type: Type of features to extract
-    
-    Returns:
-        features_batch: Batch of features as torch.Tensor
-        labels_batch: Batch of labels as torch.Tensor
-    """
-    audios, labels = zip(*batch)
-    
-    features_list = []
-    for audio in audios:
-        # Extract features
-        features = feature_extractor.extract_features(audio, feature_type)
-        features = feature_extractor.normalize_features(features)
+    def __call__(self, audio: np.ndarray) -> np.ndarray:
+        """Make the feature extractor callable.
         
-        # Flatten to 1D vector
-        features_flat = features.flatten()
-        features_list.append(features_flat)
-    
-    # Stack into batch
-    features_batch = torch.FloatTensor(np.stack(features_list))
-    labels_batch = torch.LongTensor(labels)
-    
-    return features_batch, labels_batch
+        Args:
+            audio: Audio signal
+            
+        Returns:
+            Mel-spectrogram by default
+        """
+        return self.extract_mel_spectrogram(audio)
