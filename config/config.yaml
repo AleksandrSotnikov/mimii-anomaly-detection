@@ -1,0 +1,62 @@
+# MIMII Anomaly Detection Configuration
+
+# Dataset settings
+data:
+  dataset_path: "data/mimii"
+  machine_types: ["valve", "pump", "fan", "slider"]
+  sample_rate: 16000
+  duration: 10  # seconds
+  n_mels: 128
+  n_fft: 1024
+  hop_length: 512
+  n_mfcc: 40
+
+# Model architecture
+model:
+  name: "autoencoder"
+  input_dim: 640  # n_mels * frames
+  hidden_dims: [256, 128, 64, 32]
+  latent_dim: 16
+  dropout: 0.2
+  activation: "relu"
+
+# Training settings
+train:
+  batch_size: 32
+  epochs: 100
+  learning_rate: 0.001
+  optimizer: "adam"
+  weight_decay: 0.0001
+  early_stopping_patience: 15
+  validation_split: 0.2
+  
+  # Learning rate scheduler
+  scheduler:
+    type: "reduce_on_plateau"
+    factor: 0.5
+    patience: 5
+    min_lr: 0.00001
+
+# Evaluation settings
+eval:
+  threshold_percentile: 95  # For anomaly detection
+  metrics: ["auc_roc", "precision", "recall", "f1"]
+
+# Paths
+paths:
+  checkpoints: "checkpoints"
+  logs: "logs"
+  results: "results"
+  tensorboard: "runs"
+
+# Device
+device: "cuda"  # or "cpu"
+
+# Random seed
+seed: 42
+
+# Logging
+logging:
+  level: "INFO"
+  save_interval: 5  # epochs
+  tensorboard: true
