@@ -1,0 +1,36 @@
+# Frontend UI mockup (HTML/JS, upload audio for anomaly check)
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>MIMII Anomaly Detector — Онлайн</title>
+</head>
+<body>
+<h2>MIMII Anomaly Detector</h2>
+<input type="file" id="audioUpload" accept="audio/wav" multiple />
+<button onclick="sendFiles()">Проверить</button>
+<pre id="resultArea"></pre>
+<script>
+function sendFiles() {
+  const input = document.getElementById('audioUpload');
+  const result = document.getElementById('resultArea');
+  const files = input.files;
+  if (!files.length) return alert('Выберите один или несколько WAV файлов.');
+  let formData = new FormData();
+  for (let file of files) formData.append('files', file);
+  fetch('/predict_batch/', {
+    method: 'POST',
+    body: formData
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    result.innerText = JSON.stringify(data, null, 2);
+  })
+  .catch(err => {
+    result.innerText = 'Ошибка запроса: ' + err;
+  });
+}
+</script>
+</body>
+</html>
