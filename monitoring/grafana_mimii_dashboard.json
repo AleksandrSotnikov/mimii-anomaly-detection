@@ -1,0 +1,32 @@
+# Grafana Dashboard Example (MIMII Monitoring)
+
+{
+  "dashboard": {
+    "id": null,
+    "title": "MIMII Anomaly Detection Monitoring",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "Anomalies over time",
+        "targets": [{"expr": "mimii_anomalies_total", "legendFormat": "Anomalies"}],
+        "datasource": "Prometheus",
+        "span": 12
+      },
+      {
+        "type": "graph",
+        "title": "Model inference latency (sec)",
+        "targets": [{"expr": "mimii_model_inference_latency_seconds", "legendFormat": "Latency"}],
+        "datasource": "Prometheus",
+        "span": 12
+      },
+      {
+        "type": "stat",
+        "title": "Total API Requests",
+        "targets": [{"expr": "mimii_requests_total", "legendFormat": "Requests"}],
+        "datasource": "Prometheus"
+      }
+    ],
+    "schemaVersion": 30,
+    "version": 1
+  }
+}

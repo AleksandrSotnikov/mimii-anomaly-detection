@@ -1,0 +1,23 @@
+stages:
+  download_data:
+    cmd: python scripts/download_dataset.py
+    outs:
+    - data/
+  preprocess:
+    cmd: python scripts/preprocess.py
+    deps:
+    - data/
+    outs:
+    - processed_data/
+  train:
+    cmd: python train_main.py --data-dir processed_data/ --epochs 100
+    deps:
+    - processed_data/
+    outs:
+    - checkpoints/best_model.pth
+  evaluate:
+    cmd: python evaluate_main.py --checkpoint checkpoints/best_model.pth
+    deps:
+    - checkpoints/best_model.pth
+    outs:
+    - results/
