@@ -1,0 +1,47 @@
+# Cloud-native Kubernetes Deployment Template (minimized)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mimii-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mimii-backend
+  template:
+    metadata:
+      labels:
+        app: mimii-backend
+    spec:
+      containers:
+      - name: mimii-backend
+        image: yourrepo/mimii-backend:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        env:
+        - name: MODEL_PATH
+          value: /models/best_model.pth
+        volumeMounts:
+        - name: model-volume
+          mountPath: /models
+      volumes:
+      - name: model-volume
+        persistentVolumeClaim:
+          claimName: mimii-model-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mimii-backend
+spec:
+  selector:
+    app: mimii-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
